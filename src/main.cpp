@@ -10,6 +10,7 @@
 #include "merrno.h"
 #include "my_programs.h"
 #include "my_functions.h"
+#include "my_file_reader.h"
 #include "VariablesManager.h"
 
 #pragma clang diagnostic push
@@ -18,7 +19,8 @@
 merrno my_errno;
 
 int main(int argc, char **argv) {
-    std::cout << "Welcome! You can exit by pressing Ctrl+C at any time...\n" << std::endl;
+    if (argc == 1)
+        std::cout << "Welcome! You can exit by pressing Ctrl+C at any time...\n" << std::endl;
     auto variablesManager = VariablesManager();
 
     std::stringstream mstringstream;
@@ -31,11 +33,57 @@ int main(int argc, char **argv) {
     std::regex varDeclaration(R"([a-zA-Z]+=.+)");
     std::regex extCommand(R"(^(.\/|..\/|\/).+)");
     std::vector<int> fds{dup(STDIN_FILENO), dup(STDOUT_FILENO), dup(STDERR_FILENO)};
+    std::vector<std::vector<std::string>> commands;
+    size_t index = 0;
+    bool prefix{false};
+    bool end_of_program{false};
+    bool is_file{false};
+    if (argc != 1) {
+        commands = read_from_file(argv[1]);
+        if (commands.at(0).at(0) == "#") {
+            index = 1;
+            prefix = true;
+        }
+        end_of_program = true;
+    }
     while (true) {
         try {
             Input inp{variablesManager};
-
-            auto res = inp.preprocessCommand();
+            std::vector<std::string> res;
+            if (argc == 1 && !is_file) {
+                res = inp.preprocessCommand();
+                if (res.at(0) == "." && res.size() == 2) {
+                    commands = read_from_file(res[1]);
+                    if (commands.at(0).at(0) == "#" && commands.at(0).at(0) == "!") {
+                        prefix = true;
+                    }
+                    is_file = true;
+                    continue;
+                } else if (res.size() == 1) {
+                    try {
+                        commands = read_from_file(res[0]);
+                        if (commands.at(0).at(0) == "#" && commands.at(0).at(0) == "!") {
+                            is_file = true;
+                            prefix = true;
+                            continue;
+                        }
+                    } catch (...) {}
+                }
+            } else {
+                if (index >= commands.size() && end_of_program) {
+                    break;
+                }
+                if (index >= commands.size() && !end_of_program) {
+                    is_file = false;
+                    index = 0;
+                    continue;
+                }
+                if (prefix) {
+                    commands.at(index).insert(commands.at(index).begin(), commands.at(0).at(0).substr(2));
+                }
+                res = commands.at(index);
+                ++index;
+            }
 
             if (res.empty()) continue;
 
@@ -56,10 +104,11 @@ int main(int argc, char **argv) {
                     }
                     if (re == "&") {
                         wait = true;
-                    }
-                    if (re == "&" && re != res.at(res.size() - 1)) {
-                        std::cerr << "Syntax error! & Must be last!" << std::endl;
-                        continue;
+                        if (re != res.at(res.size() - 1)) {
+                            std::cerr << "Syntax error! & Must be last!" << std::endl;
+                            break;
+                        }
+                        res.erase(res.end());
                     }
                     if (re == ">" || re == "2>" || re == "2>&1") {
                         redirect = true;
@@ -84,10 +133,13 @@ int main(int argc, char **argv) {
             if (my_errno.get_code() != 0) {
                 my_errno.get_description();
             }
+            if (argc != 1 || !is_file) {
+                std::cout << std::endl;
+            }
         } catch (std::runtime_error &error) {
             std::cerr << error.what() << std::endl;
         } catch (...) {
-            std::cerr << "Unknown error." << std::endl;
+            std::cout << "Unknown error!" << std::endl;
         }
     }
     return 0;
