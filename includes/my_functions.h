@@ -31,6 +31,6 @@ void mecho(const std::vector<std::string> &args);
 
 void mexport(const std::vector<std::string> &args, VariablesManager &variablesManager);
 
-void run_my_options(std::vector<std::string> &args, VariablesManager &variablesManager);
+int run_my_options(std::vector<std::string> &args, VariablesManager &variablesManager);
 
 #endif //MYSHELL_MY_FUNCTIONS_H

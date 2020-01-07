@@ -9,7 +9,7 @@
 
 extern merrno my_errno;
 
-void run_my_options(std::vector<std::string> &args, VariablesManager &variablesManager) {
+int run_my_options(std::vector<std::string> &args, VariablesManager &variablesManager) {
     bool help = false;
     for (auto &opt: args) {
         if (opt == "-h" || opt == "-help" || opt == "--help") {
@@ -66,6 +66,7 @@ void run_my_options(std::vector<std::string> &args, VariablesManager &variablesM
     }
     if (help || (args[0] != "mcd" && args[0] != "mexit"))
         std::cout << std::endl;
+    return 0;
 }
 
 void mpwd_help() {

@@ -4,6 +4,7 @@
 #include <regex>
 #include <iostream>
 #include <unistd.h>
+#include <subProcess.h>
 
 #include "Input.h"
 #include "my_io.h"
@@ -12,7 +13,7 @@
 #include "my_functions.h"
 #include "my_file_reader.h"
 #include "VariablesManager.h"
-
+#include <fcntl.h>
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
 
@@ -27,11 +28,12 @@ int main(int argc, char **argv) {
     mstringstream << "/bin/:/bin/local/:" << get_current_directory();
     variablesManager.setGlobalVariable("PATH", mstringstream.str());
 
-    std::vector<std::string> my_optins{"merrno", "mpwd", "mcd", "mexit", "mecho", "mexport"};
-    std::vector<std::string> my_programs{"mycat", "myls", "mygrep", "mymkdir"};
+//    std::vector<std::string> my_optins{"merrno", "mpwd", "mcd", "mexit", "mecho", "mexport"};
+//    std::vector<std::string> my_programs{"mycat", "myls", "mygrep", "mymkdir"};
 
     std::regex varDeclaration(R"([a-zA-Z]+=.+)");
     std::regex extCommand(R"(^(.\/|..\/|\/).+)");
+
     std::vector<int> fds{dup(STDIN_FILENO), dup(STDOUT_FILENO), dup(STDERR_FILENO)};
     std::vector<std::vector<std::string>> commands;
     size_t index = 0;
@@ -88,46 +90,104 @@ int main(int argc, char **argv) {
             if (res.empty()) continue;
 
             if (res.size() == 1 && std::regex_match(res[0], varDeclaration)) {
+//                Var creating
                 auto delimiterPos = res[0].find('=');
                 variablesManager.setLocalVariable(res[0].substr(0, delimiterPos), res[0].substr((delimiterPos + 1)));
             } else {
-                bool conveer{false};
-                bool infromfile{false};
-                bool wait{false};
-                bool redirect{false};
-                for (auto &re:res) {
-                    if (re == "|") {
-                        conveer = true;
-                    }
-                    if (re == "<") {
-                        infromfile = true;
-                    }
-                    if (re == "&") {
-                        wait = true;
-                        if (re != res.at(res.size() - 1)) {
-                            std::cerr << "Syntax error! & Must be last!" << std::endl;
-                            break;
+//                Command running
+                std::vector<subProcess> pipeline;
+
+                std::string command;
+                std::vector<std::string> args;
+
+                std::string in_redirected{};
+                std::string out_redirected{};
+                std::string err_redirected{};
+                bool flag_will_be_detached = false;
+                bool flag_in_err_redirected = false;
+
+                for (int i = res.size()-1; i >= 0; i--) {
+                    if (res[i] == "|" || i == 0) {
+
+                        if (i==0) {
+                            std::reverse(args.begin(), args.end());
+                            pipeline.emplace_back(res[i], args, variablesManager);
+                        } else {
+                            args.pop_back();
+                            std::reverse(args.begin(), args.end());
+                            pipeline.emplace_back(res[i+1], args, variablesManager);
+
                         }
-                        res.erase(res.end());
+                        args.clear();
+
+                        if (!in_redirected.empty()) {
+                            int fd = open(in_redirected.c_str(), O_RDWR | O_CREAT, S_IRWXU);
+                            if (fd < 0) {
+                                throw std::runtime_error("Cannot open file");
+                            }
+                            in_redirected.clear();
+                            pipeline[pipeline.size()-1].fd_in = fd;
+                        }
+
+                        if (!out_redirected.empty()) {
+                            int fd = open(out_redirected.c_str(), O_RDWR | O_CREAT, S_IRWXU);
+                            if (fd < 0) {
+                                throw std::runtime_error("Cannot open file");
+                            }
+                            out_redirected.clear();
+                            pipeline[pipeline.size()-1].fd_out = fd;
+                            if (flag_in_err_redirected) {
+                                pipeline[pipeline.size()-1].fd_err = fd;
+                                flag_in_err_redirected = false;
+                            }
+                        }
+
+                        if (!err_redirected.empty()) {
+                            int fd = open(err_redirected.c_str(), O_RDWR | O_CREAT, S_IRWXU);
+                            if (fd < 0) {
+                                throw std::runtime_error("Cannot open file");
+                            }
+                            err_redirected.clear();
+                            pipeline[pipeline.size()-1].fd_in = fd;
+                        }
+
+                        pipeline[pipeline.size()-1].will_be_detached = flag_will_be_detached;
+                        flag_will_be_detached = false;
+
+                    }  else if (res[i] == "<") {
+                        in_redirected = args.back();
+                        args.pop_back();
+
+                    } else if (res[i] == "&") {
+                        if (i!= res.size()-1) {
+                            throw std::runtime_error("Syntax error");
+                        } else {
+                            flag_will_be_detached = true;
+                        }
+                    } else if (res[i]==">") {
+                        out_redirected = args.back();
+                        args.pop_back();
+
+                    } else if (res[i]=="2>") {
+                        err_redirected = args.back();
+                        args.pop_back();
+
+                    } else if (res[i]=="2>&1") {
+                        flag_in_err_redirected = true;
+                    } else {
+                        args.push_back(res[i]);
                     }
-                    if (re == ">" || re == "2>" || re == "2>&1") {
-                        redirect = true;
-                    }
                 }
-                if (redirect && change_d(res) != 0) {
-                    return_d(fds);
-                    std::cerr << "Can`t redirect output" << std::endl;
-                    continue;
+
+                if (pipeline.size()==1) {
+                    pipeline[0].start();
+                    pipeline[0].wait();
                 }
-                if (infromfile) {
-                    read_input_from_file(res);
-                }
-                if (std::find(my_optins.begin(), my_optins.end(), res[0]) != my_optins.end()) {
-                    run_my_options(res, variablesManager);
-                } else {
-                    run_my_programs(res, variablesManager, wait, redirect, conveer);
-                }
-                return_d(fds);
+
+//                    run_my_programs(res, variablesManager, wait, redirect, conveer);
+//                }
+//                return_d(fds);
+                std::cout << "a";
             }
 
             if (my_errno.get_code() != 0) {
@@ -139,7 +199,7 @@ int main(int argc, char **argv) {
         } catch (std::runtime_error &error) {
             std::cerr << error.what() << std::endl;
         } catch (...) {
-            std::cout << "Unknown error!" << std::endl;
+            std::cout << "Syntax error!" << std::endl;
         }
     }
     return 0;
