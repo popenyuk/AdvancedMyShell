@@ -21,9 +21,18 @@ subProcess::subProcess(std::string command, std::vector<std::string> & args, Var
     }
 
 // Check for path command
-// TODO Check for path command
+    bool findInPath = false;
+    for (auto & elem : vm.path) {
+        if (checkIfFileexists(elem + command)) {
+            commandName = elem;
+            findInPath = true;
+            break;
+        }
+    }
+
+
 //    Check for simple command
-    if (!checkIfFileexists(command)) {
+    if (!findInPath && !checkIfFileexists(command)) {
         throw std::runtime_error("Command does not exist");
     }
     commandName = command;
@@ -33,7 +42,16 @@ subProcess::subProcess(std::string command, std::vector<std::string> & args, Var
         cstr_args.push_back(argument);
     }
 
-}
+    for( auto & entry : vm.globalVariables) {
+        auto row = entry.first + "=" + entry.second;
+        char * env_arg = new char[row.size()+1];
+        std::copy(&row[0], &row[0] + row.size() + 1, env_arg);
+        cstr_env.push_back(env_arg);
+
+    }
+
+
+    }
 
 void subProcess::start() {
     pid = fork();
@@ -43,24 +61,24 @@ void subProcess::start() {
     } else if (pid == 0) { // child
         if (fd_in!=-1 || is_in_piped) {
             if (is_in_piped) {
-                dup2(pipe_in.first, 0);
+                dup2(pipe_in.first, STDIN_FILENO);
                 close(pipe_in.second);
             } else {
-                dup2(fd_in, 0);
+                dup2(fd_in, STDIN_FILENO);
             }
         }
 
         if (fd_out!=-1 || is_out_piped) {
             if (is_out_piped) {
-                dup2(pipe_out.first, 1);
+                dup2(pipe_out.first, STDOUT_FILENO);
                 close(pipe_out.second);
             } else {
-                dup2(fd_out, 1);
+                dup2(fd_out, STDOUT_FILENO);
             }
         }
 
         if (fd_err!=-1) {
-            dup2(fd_err, 2);
+            dup2(fd_err, STDERR_FILENO);
         }
 
         if (will_be_detached) {
@@ -78,8 +96,25 @@ void subProcess::start() {
         if (is_command_builtin) {
             run_my_options(argsCopy, vm);
         } else {
-            execve(commandName.c_str(), cstr_args.data(), NULL);
+//        execve(commandName.c_str(), cstr_args.data(), nullptr);
+        execve(commandName.c_str(), nullptr, nullptr);
+//            execve(commandName.c_str(), cstr_args.data(), vm.getENVPRepr());
         }
+
+        close(fd_in);
+        close(fd_out);
+        close(fd_err);
+
+//        close(STDIN_FILENO);
+//        close(STDOUT_FILENO);
+//        close(STDERR_FILENO);
+
+        close (pipe_in.first);
+        close (pipe_in.second);
+//
+        close (pipe_out.first);
+        close (pipe_out.second);
+
     }
 
     if (is_in_piped)
@@ -97,10 +132,12 @@ int subProcess::return_code() {
     return errcode;
 }
 
-void subProcess::wait() {
+int subProcess::wait() {
     if (will_be_detached)
-        return;
-    waitpid(pid, &errcode, 0);
+        return -999;
+    int result = 0;
+    waitpid(pid, &result, 0);
+    return result;
 }
 
 void subProcess::pipe_to(subProcess & process) {
@@ -112,5 +149,6 @@ void subProcess::pipe_to(subProcess & process) {
 
     process.is_in_piped = true;
     process.pipe_in = std::pair<int,int>(p_fd[0], p_fd[1]);
-};
+}
+
 

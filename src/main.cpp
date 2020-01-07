@@ -28,9 +28,6 @@ int main(int argc, char **argv) {
     mstringstream << "/bin/:/bin/local/:" << get_current_directory();
     variablesManager.setGlobalVariable("PATH", mstringstream.str());
 
-//    std::vector<std::string> my_optins{"merrno", "mpwd", "mcd", "mexit", "mecho", "mexport"};
-//    std::vector<std::string> my_programs{"mycat", "myls", "mygrep", "mymkdir"};
-
     std::regex varDeclaration(R"([a-zA-Z]+=.+)");
     std::regex extCommand(R"(^(.\/|..\/|\/).+)");
 
@@ -181,13 +178,24 @@ int main(int argc, char **argv) {
 
                 if (pipeline.size()==1) {
                     pipeline[0].start();
-                    pipeline[0].wait();
+                    std::cout << pipeline[0].wait() << std::endl;
+                } else {
+                    for (int i = pipeline.size()-1; i >=1; --i) {
+                        pipeline[i].pipe_to(pipeline[i-1]);
+                    }
+
+                    for (auto & el : pipeline) {
+                        el.start();
+                    }
+
+                    for (auto & el : pipeline) {
+                        el.wait();
+                    }
                 }
 
 //                    run_my_programs(res, variablesManager, wait, redirect, conveer);
 //                }
 //                return_d(fds);
-                std::cout << "a";
             }
 
             if (my_errno.get_code() != 0) {

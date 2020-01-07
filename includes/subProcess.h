@@ -18,6 +18,7 @@ private:
     std::string commandName;
     std::vector<std::string> argsCopy;
     std::vector<char*> cstr_args;
+    std::vector<char*> cstr_env;
     VariablesManager vm;
 
     int pid;
@@ -42,7 +43,7 @@ public:
 
     void start();
     int return_code();
-    void wait();
+    int wait();
     void pipe_to(subProcess & process);
 
 };

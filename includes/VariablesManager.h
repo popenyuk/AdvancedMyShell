@@ -6,12 +6,16 @@
 
 #include <string>
 #include <map>
+#include <vector>
 
 class VariablesManager {
 private:
+    void updatePath();
+public:
     std::map<std::string, std::string> localVariables;
     std::map<std::string, std::string> globalVariables;
-public:
+
+    std::vector<std::string> path;
     VariablesManager() = default;
 
     void setGlobalVariable(const std::string &name, std::string data);
@@ -25,6 +29,8 @@ public:
     std::string getLocalVariable(const std::string &name);
 
     std::string getAllLocalVariable() const;
+
+    char ** getENVPRepr();
 
 };
 
