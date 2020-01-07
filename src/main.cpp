@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
     variablesManager.setGlobalVariable("PATH", mstringstream.str());
 
     std::vector<std::string> my_optins{"merrno", "mpwd", "mcd", "mexit", "mecho", "mexport"};
-    std::vector<std::string> my_programs{"mycat", "myls", "mygrep", "mymkdir"};
+    std::vector<std::string> my_programs{"mycat", "myls", "mygrep", "mymkdir", "myrm"};
 
     std::regex varDeclaration(R"([a-zA-Z]+=.+)");
     std::regex extCommand(R"(^(.\/|..\/|\/).+)");
