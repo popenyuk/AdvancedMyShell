@@ -9,7 +9,7 @@ int main(int argc, char **argv) {
     parse_arguments(argc, argv, reader);
     if (argc == 1) {
         std::cout << "Wrong number of optins." << std::endl;
-        reader.help = true;
+        return -1;
     }
     if (reader.help) {
         std::cout << "Usage: mkdir [OPTION]... DIRECTORY\n"
