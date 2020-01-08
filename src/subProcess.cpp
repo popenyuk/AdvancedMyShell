@@ -52,16 +52,18 @@ subProcess::subProcess(std::string command, std::vector<std::string> args, Varia
         std::copy(&entry[0], &entry[0] + entry.size() + 1, argument);
         cstr_args.push_back(argument);
     }
+    cstr_args.push_back(nullptr);
 
     for( auto & entry : vm.globalVariables) {
         auto row = entry.first + "=" + entry.second;
         char * env_arg = new char[row.size()+1];
         std::copy(&row[0], &row[0] + row.size() + 1, env_arg);
         cstr_env.push_back(env_arg);
-
     }
+    cstr_env.push_back(nullptr);
 
-    }
+
+}
 
 void subProcess::start() {
     pid = fork();
@@ -102,11 +104,12 @@ void subProcess::start() {
                 close(STDERR_FILENO);
             }
         }
+//        throw std::runtime_error(std::string("Desc: ") + std::to_string(fd_in) + std::to_string(fd_out) +std::to_string(fd_err));
         if (is_command_builtin) {
             run_my_options(argsCopy, vm);
         } else {
             execve(commandName.c_str(), cstr_args.data(), cstr_env.data());
-            throw std::runtime_error("Execve failed.");
+            throw std::runtime_error(std::string("Execve failed. ") + std::to_string(errno));
         }
     }
 
@@ -114,6 +117,10 @@ void subProcess::start() {
         close(pipe_in.first);
     if (is_out_piped)
         close(pipe_out.first);
+    for (auto arg: cstr_args)
+        delete[] arg;
+    for (auto arg: cstr_env)
+        delete[] arg;
 }
 
 int subProcess::return_code() {
@@ -154,9 +161,5 @@ void subProcess::close_descriptors() {
 
 subProcess::~subProcess() {
     this->close_descriptors();
-    for (auto arg: cstr_args)
-        delete[] arg;
 
-    for (auto arg: cstr_env)
-        delete[] arg;
 }
