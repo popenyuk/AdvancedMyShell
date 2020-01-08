@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.10)
 project(myshell)
 
+set (CMAKE_CXX_FLAGS "-lrt -pthread")
 set(CMAKE_CXX_STANDARD 17)
-
-link_libraries(stdc++fs)
+link_libraries(stdc++fs rt)
 find_library(Readline_LIBRARY NAMES readline)
 
 include_directories(includes)
@@ -11,7 +11,6 @@ include_directories(mymkdir/Inc)
 include_directories(myls/headers)
 include_directories(mygrep/inc)
 include_directories(myrm/inc)
-
 add_executable(mycat mycat/main.c mycat/my_io.c mycat/my_io.h)
 
 add_executable(myls myls/main.cpp myls/sources/File.cpp myls/headers/File.h myls/sources/FilesManagement.cpp myls/headers/FilesManagement.h

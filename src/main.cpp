@@ -13,6 +13,8 @@
 #include "my_file_reader.h"
 #include "VariablesManager.h"
 #include <fcntl.h>
+#include <sys/mman.h>
+
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
@@ -138,7 +140,18 @@ void exec_pipeline(std::vector<subProcess> & pipeline, int argc, bool is_file) {
 
 std::string outToVar(std::vector<std::string> & res, VariablesManager variablesManager) {
     auto pipe = commandToPipeline(res, variablesManager);
-    return "TEST";
+    int fd =  shm_open("myshell_var_out", O_RDWR | O_CREAT | O_EXCL, 0666);
+    if (fd < 0) {
+        throw std::runtime_error("Cannot create shared memory");
+    }
+    std::cout << errno << std::endl;
+    void * addr = mmap(nullptr, 8192, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    pipe[0].fd_out = fd;
+    exec_pipeline(pipe, 0, false);
+    std::string comRes((char*)addr);
+    munmap(addr, 8192);
+    close(fd);
+    return comRes;
 }
 
 int main(int argc, char **argv) {
