@@ -61,7 +61,6 @@ subProcess::subProcess(std::string command, std::vector<std::string> args, Varia
 
     }
 
-
     }
 
 void subProcess::start() {
@@ -69,8 +68,8 @@ void subProcess::start() {
 
     if (pid == -1) {
         throw std::runtime_error("Fork failed");
-    } else if (pid == 0) { // child
-        if (fd_in != -1 || is_in_piped) {
+    } else if (pid == 0) {
+        if (fd_in || is_in_piped) {
             if (is_in_piped) {
                 dup2(pipe_in.first, STDIN_FILENO);
                 close(pipe_in.second);
@@ -79,7 +78,7 @@ void subProcess::start() {
             }
         }
 
-        if (fd_out != -1 || is_out_piped) {
+        if (fd_out || is_out_piped) {
             if (is_out_piped) {
                 dup2(pipe_out.first, STDOUT_FILENO);
                 close(pipe_out.second);
@@ -88,19 +87,19 @@ void subProcess::start() {
             }
         }
 
-        if (fd_err!=-1) {
+        if (fd_err) {
             dup2(fd_err, STDERR_FILENO);
         }
 
         if (will_be_detached) {
-            if (!fd_in) {
-                close(fd_in);
+            if (fd_in) {
+                close(STDIN_FILENO);
             }
-            if (!fd_out) {
-                close(fd_out);
+            if (fd_out) {
+                close(STDOUT_FILENO);
             }
             if (!fd_err) {
-                close(fd_err);
+                close(STDERR_FILENO);
             }
         }
         if (is_command_builtin) {
@@ -108,7 +107,6 @@ void subProcess::start() {
         } else {
             execve(commandName.c_str(), cstr_args.data(), cstr_env.data());
             throw std::runtime_error("Execve failed.");
-
         }
     }
 
@@ -116,15 +114,6 @@ void subProcess::start() {
         close(pipe_in.first);
     if (is_out_piped)
         close(pipe_out.first);
-
-    for (auto arg: cstr_args)
-        delete[] arg;
-
-    for (auto arg: cstr_env)
-        delete[] arg;
-
-
-
 }
 
 int subProcess::return_code() {
@@ -161,4 +150,13 @@ void subProcess::close_descriptors() {
         close(fd_err);
     }
 
+}
+
+subProcess::~subProcess() {
+    this->close_descriptors();
+    for (auto arg: cstr_args)
+        delete[] arg;
+
+    for (auto arg: cstr_env)
+        delete[] arg;
 }

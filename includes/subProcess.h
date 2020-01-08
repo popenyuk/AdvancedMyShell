@@ -47,6 +47,8 @@ public:
     void pipe_to(subProcess & process);
     void close_descriptors();
 
+    virtual ~subProcess();
+
 };
 
 inline bool checkIfFileexists (const std::string& name) {
