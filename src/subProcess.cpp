@@ -156,7 +156,6 @@ void subProcess::close_descriptors() {
     if (fd_err) {
         close(fd_err);
     }
-
 }
 
 subProcess::~subProcess() {

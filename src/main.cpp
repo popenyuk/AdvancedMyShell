@@ -9,12 +9,10 @@
 #include "Input.h"
 #include "my_io.h"
 #include "merrno.h"
-//#include "my_programs.h"
 #include "my_functions.h"
 #include "my_file_reader.h"
 #include "VariablesManager.h"
 #include <fcntl.h>
-//#include <MyProcess.h>
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
@@ -31,9 +29,11 @@ int main(int argc, char **argv) {
     variablesManager.setGlobalVariable("PATH", mstringstream.str());
 
     std::regex varDeclaration(R"([a-zA-Z]+=.+)");
+    std::regex execToVarOpenParenthesis(R"([a-zA-Z]+=\$\(.+[^\)])");
+    std::regex execToVar(R"([a-zA-Z]+=\$\(.+\))");
+    std::regex execToVarCloseParenthesis(R"(.+\))");
     std::regex extCommand(R"(^(.\/|..\/|\/).+)");
 
-//    std::vector<int> fds{dup(STDIN_FILENO), dup(STDOUT_FILENO), dup(STDERR_FILENO)};
     std::vector<std::vector<std::string>> commands;
     size_t index = 0;
     bool prefix{false};
@@ -88,7 +88,26 @@ int main(int argc, char **argv) {
 
             if (res.empty()) continue;
 
-            if (res.size() == 1 && std::regex_match(res[0], varDeclaration)) {
+            if (res.size() == 1 && std::regex_match(res[0], execToVar)) {
+                auto delimiterPos = res[0].find('=');
+                std::cout << res[0].substr(delimiterPos+3, res[0].size()-(delimiterPos+2)-2) << std::endl;
+            } else  if (std::regex_match(res[0], execToVarOpenParenthesis)) {
+                if (std::regex_match(res[res.size()-1], execToVarCloseParenthesis)) {
+                    auto delimiterPos = res[0].find('=');
+                    std::string cmd_parsed{};
+                    for (int i = 0; i < res.size(); ++i) {
+                        if (i==0) {
+                            cmd_parsed += res[i].substr(delimiterPos+3, res[0].size()-(delimiterPos+2)) + " ";
+                        } else if (i == res.size()-1) {
+                            cmd_parsed += res[i].substr(0, res[i].length()-1);
+                        } else {
+                            cmd_parsed += res[i]+ " ";
+                        }
+                    }
+                    std::cout << "VVAAA: " << cmd_parsed << std::endl;
+                }
+
+            } else if (res.size() == 1 && std::regex_match(res[0], varDeclaration)) {
 //                Var creating
                 auto delimiterPos = res[0].find('=');
                 variablesManager.setLocalVariable(res[0].substr(0, delimiterPos), res[0].substr((delimiterPos + 1)));
