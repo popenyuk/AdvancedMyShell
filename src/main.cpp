@@ -140,7 +140,7 @@ void exec_pipeline(std::vector<subProcess> & pipeline, int argc, bool is_file) {
 
 std::string outToVar(std::vector<std::string> & res, VariablesManager variablesManager) {
     auto pipe = commandToPipeline(res, variablesManager);
-    int fd =  shm_open("myshell_var_out", O_RDWR | O_CREAT | O_EXCL, 0666);
+    int fd =  shm_open("myshell_var_out_tt", O_RDWR | O_CREAT | O_EXCL, 0666);
     if (fd < 0) {
         throw std::runtime_error("Cannot create shared memory");
     }
@@ -148,9 +148,9 @@ std::string outToVar(std::vector<std::string> & res, VariablesManager variablesM
     void * addr = mmap(nullptr, 8192, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     pipe[0].fd_out = fd;
     exec_pipeline(pipe, 0, false);
+    close(fd);
     std::string comRes((char*)addr);
     munmap(addr, 8192);
-    close(fd);
     return comRes;
 }
 
@@ -184,6 +184,7 @@ int main(int argc, char **argv) {
     }
     while (true) {
         try {
+            std::vector<subProcess> pipeline;
             Input inp{variablesManager};
             std::vector<std::string> res;
             if (argc == 1 && !is_file) {
@@ -222,10 +223,9 @@ int main(int argc, char **argv) {
             }
 
             if (res.empty()) continue;
-            std::vector<subProcess> pipeline;
             if (res.size() == 1 && std::regex_match(res[0], execToVar)) {
                 auto delimiterPos = res[0].find('=');
-                std::vector<std::string> varCommand;
+                std::vector<std::string> varCommand{};
                 varCommand.emplace_back(res[0].substr(delimiterPos+3, res[0].size()-(delimiterPos+2)-2));
                 variablesManager.setLocalVariable(res[0].substr(0, delimiterPos), outToVar(varCommand, variablesManager));
 
@@ -234,7 +234,7 @@ int main(int argc, char **argv) {
             } else  if (std::regex_match(res[0], execToVarOpenParenthesis)) {
                 if (std::regex_match(res[res.size()-1], execToVarCloseParenthesis)) {
                     auto delimiterPos = res[0].find('=');
-                    std::vector<std::string> varCommand;
+                    std::vector<std::string> varCommand{};
                     for (int i = 0; i < res.size(); ++i) {
                         if (i==0) {
                             varCommand.emplace_back(res[i].substr(delimiterPos+3, res[0].size()-(delimiterPos+2)));
