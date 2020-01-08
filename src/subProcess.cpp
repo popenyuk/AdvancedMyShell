@@ -106,35 +106,20 @@ void subProcess::start() {
         if (is_command_builtin) {
             run_my_options(argsCopy, vm);
         } else {
-            execve(commandName.c_str(), cstr_args.data(), nullptr);
+            execve(commandName.c_str(), cstr_args.data(), cstr_env.data());
         }
-
-//
-//        if (fd_in!=-1) {
-//            close(fd_in);
-//        }
-//        if (fd_out!=-1) {
-//            close(fd_out);
-//        }
-//        if (fd_err!=-1){
-//            close(fd_err);
-//        }
-
-//
-//        close (pipe_in.first);
-//        close (pipe_in.second);
-////
-//        close (pipe_out.first);
-//        close (pipe_out.second);
-
     }
 
-        if (is_in_piped)
-            close(pipe_in.first);
-        if (is_out_piped)
-            close(pipe_out.first);
-        for (auto arg: cstr_args)
-            delete[] arg;
+    if (is_in_piped)
+        close(pipe_in.first);
+    if (is_out_piped)
+        close(pipe_out.first);
+
+    for (auto arg: cstr_args)
+        delete[] arg;
+
+    for (auto arg: cstr_env)
+        delete[] arg;
 
 
 
@@ -149,19 +134,6 @@ int subProcess::wait() {
         return -999;
     int result = 0;
     waitpid(pid, &result, 0);
-
-
-
-//
-//        close(STDIN_FILENO);
-//        close(STDOUT_FILENO);
-//        close(STDERR_FILENO);
-
-//        close (pipe_in.first);
-//        close (pipe_in.second);
-////
-//        close (pipe_out.first);
-//        close (pipe_out.second);
     return result;
 }
 

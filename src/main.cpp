@@ -9,12 +9,12 @@
 #include "Input.h"
 #include "my_io.h"
 #include "merrno.h"
-#include "my_programs.h"
+//#include "my_programs.h"
 #include "my_functions.h"
 #include "my_file_reader.h"
 #include "VariablesManager.h"
 #include <fcntl.h>
-#include <MyProcess.h>
+//#include <MyProcess.h>
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
@@ -178,28 +178,25 @@ int main(int argc, char **argv) {
                         args.push_back(res[i]);
                     }
                 }
-
+                int exit_code;
                 if (pipeline.size()==1) {
                     pipeline[0].start();
-                    std::cout << pipeline[0].wait() << std::endl;
+                    exit_code = pipeline[0].wait();
                 } else {
                     for (int i = pipeline.size()-1; i >=1; --i) {
                         pipeline[i].pipe_to(pipeline[i-1]);
                     }
 
-                    for (auto & el : pipeline) {
-                        el.start();
+                    for (int i = pipeline.size()-1; i >=0; --i) {
+                        pipeline[i].start();
                     }
 
-                    for (auto & el : pipeline) {
-                        el.wait();
+                    for (int i = pipeline.size()-1; i >=1; --i) {
+                        exit_code = pipeline[i].wait();
                     }
                 }
-                pipeline.clear();
+                my_errno.set_code(exit_code, exit_code);
 
-//                    run_my_programs(res, variablesManager, wait, redirect, conveer);
-//                }
-//                return_d(fds);
             }
 
             if (my_errno.get_code() != 0) {
