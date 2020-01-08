@@ -2,6 +2,7 @@
 // Created by markiian on 08.01.20.
 //
 
+#include <ftw.h>
 #include "utils.h"
 
 int copy_raw(int fd_from, int fd_to) {
@@ -53,7 +54,7 @@ File try_to_get_dest(const char *filename, bool &force_flag) {
             std::string current_path = "";
             while (std::getline(ss, current_dir, '/')) {
                 current_path += "/" + current_dir;
-                mkdir(current_path.c_str(), 0700);
+                std::cout << mkdir(current_path.c_str(), 0700) << errno << std::endl;
             }
             dest = open(filename, O_WRONLY | O_CREAT | O_EXCL, 0644);
         } else if (errno == EEXIST) {
@@ -152,7 +153,8 @@ void listdir(char *path, size_t size, std::vector<char *> &path_list, std::vecto
 }
 
 
-void recursiveDirTraversal(char *path, std::vector<char *> &from, std::vector<char *> &to, const std::string &dir_to) {
+void
+recursiveDirTraversal(const char *path, std::vector<char *> &from, std::vector<char *> &to, const std::string &dir_to) {
     if (is_directory(path)) {
         char path_m[1024];
         strcpy(path_m, path);
@@ -177,4 +179,94 @@ void free_vector_of_char_p(std::vector<char *> &vec) {
     for (auto entry : vec) {
         delete[] entry;
     }
+}
+
+int move_pipeline(const char *from, const char *to, bool &force_flag) {
+    struct stat buffer;
+    bool flag_from = stat(from, &buffer) == 0;
+//    bool flag_to = stat(to, &buffer) != 0;
+    if (!flag_from) {
+        std::cout << "File \"" << from << "\" does not exist" << std::endl;
+        return 1;
+    }
+    if (rename(from, to) < 0 && errno == EXDEV) {
+        auto source = try_to_get_source(from);
+        if (source == ERR_File)
+            return 1;
+
+        if (source.second == DIR_TYPE) {
+//                    recursive dir copy
+            std::vector<char *> fromPathList;
+            std::vector<char *> toPathList;
+            recursiveDirTraversal(from, fromPathList, toPathList, to);
+            std::vector<std::pair<int, char *>> from_fds;
+            for (auto from_entry : fromPathList) {
+                auto res = try_to_get_source(from_entry);
+                if (res == ERR_File) {
+                    return 1;
+                }
+                from_fds.emplace_back(res.first, from_entry);
+            }
+
+            for (int i = 0; i < toPathList.size(); ++i) {
+                auto to = try_to_get_dest(toPathList[i], force_flag);
+                if (to == ERR_File) {
+                    return 1;
+                }
+                if (to == SKIP_File) {
+                    continue;
+                } else if (to == ABORT_File) {
+                    return 0;
+                } else {
+                    auto copy_res = copy_raw(from_fds[i].first, to.first);
+                    int delete_res = 0;
+                    if (copy_res == 0) {
+                        delete_res = remove(fromPathList[i]);
+                        if (delete_res != 0) {
+                            std::cout << "Error during deleting file: " << strerror(errno) << std::endl;
+                            return 1;
+                        }
+                    } else {
+                        return 1;
+                    }
+                    close(from_fds[i].first);
+                    close(to.first);
+                }
+            }
+            free_vector_of_char_p(fromPathList);
+            free_vector_of_char_p(toPathList);
+            if (recursive_remove(from) < 0) {
+                return 1;
+            }
+
+        } else {
+//                    file copy
+            auto dest = try_to_get_dest(to, force_flag);
+            if (dest.first < 0)
+                return 1;
+
+            auto copy_res = copy_raw(source.first, dest.first);
+            int delete_res = 0;
+            if (copy_res == 0) {
+                delete_res = remove(from);
+                if (delete_res != 0) {
+                    std::cout << "Error during deleting file: " << strerror(errno) << std::endl;
+                }
+            }
+            return copy_res + delete_res;
+        }
+    }
+    return 0;
+}
+
+static int rmFiles(const char *pathname, const struct stat *sbuf, int type, struct FTW *ftwb) {
+    if (remove(pathname) < 0) {
+        perror("ERROR: remove");
+        return -1;
+    }
+    return 0;
+}
+
+int recursive_remove(const char *path) {
+    return nftw(path, rmFiles, 10, FTW_DEPTH | FTW_MOUNT | FTW_PHYS);
 }
