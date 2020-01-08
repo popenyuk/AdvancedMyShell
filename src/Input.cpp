@@ -47,7 +47,7 @@ std::vector<std::string> Input::preprocessCommand() {
                 res.insert(res.end(), wildcardedInput.begin(), wildcardedInput.end());
                 if (wildcardedInput.empty()) res.push_back(elem);
             } else {
-                res.push_back(elem);
+                res.push_back(newEntry);
             }
         } catch (std::invalid_argument& ex){
             std::cout << ex.what() << std::endl;

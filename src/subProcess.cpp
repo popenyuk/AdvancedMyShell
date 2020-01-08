@@ -10,7 +10,9 @@
 #include <my_functions.h>
 #include <iostream>
 
-subProcess::subProcess(std::string command, std::vector<std::string> & args, VariablesManager varMan) {
+
+
+subProcess::subProcess(std::string command, std::vector<std::string> args, VariablesManager varMan) {
     vm = varMan;
 //    Check for built in command
     if (std::find(my_optins.begin(), my_optins.end(), command) != my_optins.end()) {
@@ -24,18 +26,27 @@ subProcess::subProcess(std::string command, std::vector<std::string> & args, Var
     bool findInPath = false;
     for (auto & elem : vm.path) {
         if (checkIfFileexists(elem + command)) {
-            commandName = elem;
+            commandName = elem+command;
             findInPath = true;
             break;
         }
     }
 
-
 //    Check for simple command
-    if (!findInPath && !checkIfFileexists(command)) {
-        throw std::runtime_error("Command does not exist");
+
+    if (!findInPath) {
+        if (checkIfFileexists(command)) {
+            commandName = command;
+        } else {
+            throw std::runtime_error("Command does not exist");
+        }
     }
-    commandName = command;
+
+
+    char *prog_name = new char[commandName.size() + 1];
+    std::copy(&commandName[0], &commandName[0] + commandName.size() + 1, prog_name);
+    cstr_args.push_back(prog_name);
+
     for( auto & entry : args) {
         char *argument = new char[entry.size() + 1];
         std::copy(&entry[0], &entry[0] + entry.size() + 1, argument);
@@ -92,40 +103,41 @@ void subProcess::start() {
                 close(STDERR_FILENO);
             }
         }
-//        execve(commandName.c_str(), "tokens.data()", "env.getEnvironmentVariables()");
         if (is_command_builtin) {
             run_my_options(argsCopy, vm);
         } else {
-//        execve(commandName.c_str(), cstr_args.data(), nullptr);
-        execve(commandName.c_str(), nullptr, nullptr);
-//            execve(commandName.c_str(), cstr_args.data(), vm.getENVPRepr());
+            execve(commandName.c_str(), cstr_args.data(), nullptr);
         }
 
-        close(fd_in);
-        close(fd_out);
-        close(fd_err);
-
-//        close(STDIN_FILENO);
-//        close(STDOUT_FILENO);
-//        close(STDERR_FILENO);
-
-        close (pipe_in.first);
-        close (pipe_in.second);
 //
-        close (pipe_out.first);
-        close (pipe_out.second);
+//        if (fd_in!=-1) {
+//            close(fd_in);
+//        }
+//        if (fd_out!=-1) {
+//            close(fd_out);
+//        }
+//        if (fd_err!=-1){
+//            close(fd_err);
+//        }
+
+//
+//        close (pipe_in.first);
+//        close (pipe_in.second);
+////
+//        close (pipe_out.first);
+//        close (pipe_out.second);
 
     }
 
-    if (is_in_piped)
-        close(pipe_in.first);
+        if (is_in_piped)
+            close(pipe_in.first);
+        if (is_out_piped)
+            close(pipe_out.first);
+        for (auto arg: cstr_args)
+            delete[] arg;
 
-    if (is_out_piped)
-        close(pipe_out.first);
 
-    for (auto & entry : cstr_args) {
-        delete [] entry;
-    }
+
 }
 
 int subProcess::return_code() {
@@ -137,6 +149,19 @@ int subProcess::wait() {
         return -999;
     int result = 0;
     waitpid(pid, &result, 0);
+
+
+
+//
+//        close(STDIN_FILENO);
+//        close(STDOUT_FILENO);
+//        close(STDERR_FILENO);
+
+//        close (pipe_in.first);
+//        close (pipe_in.second);
+////
+//        close (pipe_out.first);
+//        close (pipe_out.second);
     return result;
 }
 

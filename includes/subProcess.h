@@ -25,9 +25,9 @@ private:
     int errcode;
 
 public:
-    int fd_in=-1;
-    int fd_out=-1;
-    int fd_err=-1;
+    int fd_in = -1;
+    int fd_out = -1;
+    int fd_err = -1;
 
     bool is_in_piped = false;
     std::pair<int,int> pipe_in;
@@ -39,7 +39,7 @@ public:
 
     bool is_command_builtin = false;
 public:
-    subProcess(std::string filename, std::vector<std::string> & args, VariablesManager varMan);
+    subProcess(std::string filename, std::vector<std::string> args, VariablesManager varMan);
 
     void start();
     int return_code();

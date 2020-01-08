@@ -17,6 +17,8 @@ private:
     std::string currentPath;
     char *buf{};
     char cCurrentPath[FILENAME_MAX]{};
+    std::string rs;
+
 public:
     explicit Input(VariablesManager &varManager);
 

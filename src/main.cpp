@@ -14,6 +14,8 @@
 #include "my_file_reader.h"
 #include "VariablesManager.h"
 #include <fcntl.h>
+#include <MyProcess.h>
+
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-noreturn"
 
@@ -25,13 +27,13 @@ int main(int argc, char **argv) {
     auto variablesManager = VariablesManager();
 
     std::stringstream mstringstream;
-    mstringstream << "/bin/:/bin/local/:" << get_current_directory();
+    mstringstream << "/bin/:/bin/local/:/usr/bin/:" << get_current_directory();
     variablesManager.setGlobalVariable("PATH", mstringstream.str());
 
     std::regex varDeclaration(R"([a-zA-Z]+=.+)");
     std::regex extCommand(R"(^(.\/|..\/|\/).+)");
 
-    std::vector<int> fds{dup(STDIN_FILENO), dup(STDOUT_FILENO), dup(STDERR_FILENO)};
+//    std::vector<int> fds{dup(STDIN_FILENO), dup(STDOUT_FILENO), dup(STDERR_FILENO)};
     std::vector<std::vector<std::string>> commands;
     size_t index = 0;
     bool prefix{false};
@@ -107,6 +109,7 @@ int main(int argc, char **argv) {
                     if (res[i] == "|" || i == 0) {
 
                         if (i==0) {
+//                            args.push_back(res[])
                             std::reverse(args.begin(), args.end());
                             pipeline.emplace_back(res[i], args, variablesManager);
                         } else {
@@ -192,6 +195,7 @@ int main(int argc, char **argv) {
                         el.wait();
                     }
                 }
+                pipeline.clear();
 
 //                    run_my_programs(res, variablesManager, wait, redirect, conveer);
 //                }
