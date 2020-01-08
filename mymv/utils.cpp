@@ -54,7 +54,7 @@ File try_to_get_dest(const char *filename, bool &force_flag) {
             std::string current_path = "";
             while (std::getline(ss, current_dir, '/')) {
                 current_path += "/" + current_dir;
-                std::cout << mkdir(current_path.c_str(), 0700) << errno << std::endl;
+                mkdir(current_path.c_str(), 0700);
             }
             dest = open(filename, O_WRONLY | O_CREAT | O_EXCL, 0644);
         } else if (errno == EEXIST) {
