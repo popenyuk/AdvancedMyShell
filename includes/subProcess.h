@@ -25,9 +25,9 @@ private:
     int errcode;
 
 public:
-    int fd_in = -1;
-    int fd_out = -1;
-    int fd_err = -1;
+    int fd_in = 0;
+    int fd_out = 0;
+    int fd_err = 0;
 
     bool is_in_piped = false;
     std::pair<int,int> pipe_in;
@@ -45,6 +45,7 @@ public:
     int return_code();
     int wait();
     void pipe_to(subProcess & process);
+    void close_descriptors();
 
 };
 

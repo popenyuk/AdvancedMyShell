@@ -178,7 +178,7 @@ int main(int argc, char **argv) {
                         args.push_back(res[i]);
                     }
                 }
-                int exit_code;
+                int exit_code = 1;
                 if (pipeline.size()==1) {
                     pipeline[0].start();
                     exit_code = pipeline[0].wait();
@@ -193,6 +193,7 @@ int main(int argc, char **argv) {
 
                     for (int i = pipeline.size()-1; i >=1; --i) {
                         exit_code = pipeline[i].wait();
+                        pipeline[i].close_descriptors();
                     }
                 }
                 my_errno.set_code(exit_code, exit_code);
