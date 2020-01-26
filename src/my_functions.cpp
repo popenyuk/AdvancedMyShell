@@ -128,7 +128,7 @@ void mexit_help() {
 void mexit(int status) {
     try {
         my_errno.set_code(0, 0);
-        _exit(status);
+        exit(status);
     } catch (...) {
         my_errno.set_code(-3, errno);
     }

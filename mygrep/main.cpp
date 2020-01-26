@@ -31,9 +31,8 @@ int main(int argc, char **argv) {
                    "\tIf there is an option --regexp - filter the tapes according to the regular expression, otherwise - according to string.\n"
                    "\tIf the command is successful, the end code must be null, not null in case of error." << std::endl;
     } else {
-        while (!std::cin.eof()) {
+        while (std::getline(std::cin, input)) {
             std::smatch match;
-            std::getline(std::cin, input);
             if (std::regex_search(input, match, regex) && !args.invert_match) {
                 do {
                     print(match.prefix().str(), args.invert_match);
